@@ -1,2 +1,6 @@
 apply plugin: 'application'
 mainClassName = 'net.hanekawa.papika.fromslack.PapikaFromSlackKt'
+
+dependencies {
+    compile project(":papikacommon")
+}
