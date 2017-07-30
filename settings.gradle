@@ -1,0 +1,4 @@
+rootProject.name = 'papika2'
+
+include 'papikafromslack'
+include 'papikatoslack'
