@@ -4,3 +4,9 @@ mainClassName = 'net.hanekawa.papika.toslack.PapikaToSlackKt'
 dependencies {
     compile project(":papikacommon")
 }
+
+sourceSets.main.resources.srcDirs += '../config'
+
+applicationDistribution.from("../config") {
+    into "config"
+}
