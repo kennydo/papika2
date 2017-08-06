@@ -8,7 +8,10 @@ class PapikaFromSlackBridge {
     }
 
     fun run() {
+        val config = Config.load()
+
         LOG.info("Hello world, I'm in the from-slack bridge")
+        LOG.info("Config: {}", config.toString())
     }
 }
 
