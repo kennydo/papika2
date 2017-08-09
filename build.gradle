@@ -20,11 +20,9 @@ allprojects {
     }
 
     dependencies {
-        compile "com.google.code.gson:gson:2.8.1"
-        compile "com.ullink.slack:simpleslackapi:1.0.0"
+        compile "com.squareup.okhttp3:okhttp:3.8.1"
+        compile "com.squareup.moshi:moshi:1.5.0"
         compile "io.github.config4k:config4k:0.3.0"
-        compile "org.glassfish.tyrus:tyrus-client:1.13.1"
-        compile "org.glassfish.tyrus:tyrus-container-grizzly-client:1.13.1"
         compile "org.jetbrains.kotlin:kotlin-stdlib-jre8:$kotlin_version"
         compile "org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"
         compile "org.slf4j:slf4j-log4j12:1.7.25"
