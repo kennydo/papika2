@@ -3,6 +3,7 @@ package net.hanekawa.papika.common.slack
 import com.squareup.moshi.Moshi
 import net.hanekawa.papika.common.logging.getLogger
 import net.hanekawa.papika.common.slack.errors.SlackConnectionError
+import okhttp3.FormBody
 import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -17,6 +18,7 @@ class SlackClient(val accessToken: String) {
 
     val httpClient = OkHttpClient.Builder().build()!!
     val moshi = Moshi.Builder().build()!!
+    private var mapAdapter = moshi.adapter(Map::class.java)
 
     fun getRtmStartResponse(): RtmStartResponse {
         val url = baseUrl
@@ -50,5 +52,41 @@ class SlackClient(val accessToken: String) {
 
     fun buildRtmSession(eventHandler: RtmEventHandler): SlackRtmSession {
         return SlackRtmSession(this, eventHandler)
+    }
+
+    fun callApi(apiMethod: String, payload: Map<String, String?>): Map<String, Any>? {
+        val apiUrl = baseUrl
+                ?.newBuilder(apiMethod)
+                ?.addQueryParameter("token", accessToken)
+                ?.build()
+
+        val formBodyBuilder = FormBody.Builder()
+        payload.forEach { entry ->
+            if (entry.value != null) {
+                formBodyBuilder.add(entry.key, entry.value)
+            }
+        }
+
+        val request = Request
+                .Builder()
+                .url(apiUrl)
+                .post(formBodyBuilder.build())
+                .build()
+        val call = httpClient.newCall(request)
+
+        val response = try {
+            call.execute()
+        } catch (e: IOException) {
+            LOG.error("Could not send request to Slack: {}", e)
+            null
+        } ?: return null
+
+
+        return try {
+            mapAdapter.fromJson(response.body()?.source()) as? Map<String, Any>
+        } catch (e: IOException) {
+            LOG.error("Unable to parse response from Slack: {}", e)
+            null
+        }
     }
 }
