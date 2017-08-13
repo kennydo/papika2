@@ -48,7 +48,7 @@ class SlackClient(val accessToken: String) {
         return rtmStartResponse
     }
 
-    fun getRtmSessionBuilder(): SlackRtmSessionBuilder {
-        return SlackRtmSessionBuilder(this)
+    fun buildRtmSession(eventHandler: RtmEventHandler): SlackRtmSession {
+        return SlackRtmSession(this, eventHandler)
     }
 }

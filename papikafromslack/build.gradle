@@ -10,3 +10,10 @@ sourceSets.main.resources.srcDirs += '../config'
 applicationDistribution.from("../config") {
     into "config"
 }
+
+dependencies {
+    compile('org.apache.curator:curator-recipes:4.0.0') {
+        exclude group: 'org.apache.zookeeper', module: 'zookeeper'
+    }
+    compile('org.apache.zookeeper:zookeeper:3.4.10')
+}
