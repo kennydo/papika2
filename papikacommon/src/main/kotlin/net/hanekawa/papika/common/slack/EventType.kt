@@ -80,7 +80,13 @@ enum class EventType(val type: String) {
     }
 }
 
-enum class MessageSubtype(val subtype: String) {
+interface EventSubtype {
+    companion object {
+        abstract fun fromSubtype(eventName: String?): EventSubtype?
+    }
+}
+
+enum class MessageSubtype(val subtype: String): EventSubtype {
     BOT_MESSAGE("bot_message"),
     CHANNEL_ARCHIVE("channel_archive"),
     CHANNEL_JOIN("channel_join"),
@@ -105,10 +111,10 @@ enum class MessageSubtype(val subtype: String) {
     MESSAGE_REPLIED("message_replied"),
     PINNED_ITEM("pinned_item"),
     REPLY_BROADCAST("reply_broadcast"),
-    UNPINNED_ITEM("unpinned_item");
+    UNPINNED_ITEM("unpinned_item")
 
     companion object {
         private val map = MessageSubtype.values().associateBy(MessageSubtype::subtype)
-        fun fromSubtype(eventName: String?): MessageSubtype? = map[eventName]
+        fun fromSubtype(subtype: String?): MessageSubtype? = map[subtype]
     }
 }
