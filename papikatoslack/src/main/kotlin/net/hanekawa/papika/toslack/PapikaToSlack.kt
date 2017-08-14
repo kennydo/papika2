@@ -12,9 +12,6 @@ class PapikaToSlackBridge(val config: Config) {
         val LOG = getLogger(this::class.java)
     }
 
-    private val moshi = Moshi.Builder().build()
-    private val mapAdapter = moshi.adapter(Map::class.java)
-
     fun run() {
         LOG.info("Starting the bridge from Kafka to Slack")
 

@@ -13,7 +13,7 @@ data class KafkaPayload(
         val channel: String?,
         val text: String?,
         @Json(name = "as_user") val asUser: String?,
-        val attachments: List<Map<String, Any>>,
+        val attachments: List<Map<String, Any>>?,
         @Json(name = "icon_emoji") val iconEmoji: String?,
         @Json(name = "icon_url") val iconUrl: String?,
         @Json(name = "link_names") val linkNames: String?,
