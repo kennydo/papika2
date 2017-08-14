@@ -1,4 +1,5 @@
-application.properties
+fromslack.properties
+toslack.properties
 
 # Gradle files
 .gradle/
