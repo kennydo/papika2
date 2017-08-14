@@ -37,6 +37,7 @@ class JsonParsingListener(val messageHandler: RtmEventHandler) : WebSocketListen
         } ?: return
 
         SlackRtmSession.LOG.debug("Got event: {}", mapAdapter.toJson(parsedMessage))
+        @Suppress("UNCHECKED_CAST")
         val castedEvent = parsedMessage as? Map<String, Any> ?: return
 
         val event = RtmEvent(

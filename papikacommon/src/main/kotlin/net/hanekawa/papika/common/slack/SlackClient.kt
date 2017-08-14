@@ -83,6 +83,7 @@ class SlackClient(val accessToken: String) {
 
 
         return try {
+            @Suppress("UNCHECKED_CAST")
             mapAdapter.fromJson(response.body()?.source()) as? Map<String, Any>
         } catch (e: IOException) {
             LOG.error("Unable to parse response from Slack: {}", e)
