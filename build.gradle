@@ -15,13 +15,17 @@ allprojects {
 
     apply plugin: 'kotlin'
 
+    ext.moshi_version = '1.5.0'
+
     repositories {
         jcenter()
     }
 
     dependencies {
         compile "com.squareup.okhttp3:okhttp:3.8.1"
-        compile "com.squareup.moshi:moshi:1.5.0"
+        compile "com.squareup.moshi:moshi:$moshi_version"
+        compile "com.squareup.moshi:moshi-adapters:$moshi_version"
+        compile "com.squareup.moshi:moshi-kotlin:$moshi_version"
         compile "io.github.config4k:config4k:0.3.0"
         compile "org.apache.kafka:kafka-clients:0.11.0.0"
         compile "org.jetbrains.kotlin:kotlin-stdlib-jre8:$kotlin_version"

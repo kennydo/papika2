@@ -1,11 +1,36 @@
 package net.hanekawa.papika.fromslack
 
+import com.squareup.moshi.Json
+import com.squareup.moshi.KotlinJsonAdapterFactory
 import com.squareup.moshi.Moshi
+import com.squareup.moshi.Rfc3339DateJsonAdapter
 import net.hanekawa.papika.common.logging.getLogger
 import net.hanekawa.papika.common.slack.RtmEvent
 import net.hanekawa.papika.common.slack.RtmEventHandler
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
+import java.net.InetAddress
+import java.util.*
+
+
+data class KafkaEventHeader(
+        val timestamp: Date,
+        val fqdn: String
+) {
+    companion object {
+        fun create(): KafkaEventHeader {
+            return KafkaEventHeader(
+                    timestamp = Date(),
+                    fqdn = InetAddress.getLocalHost().hostName
+            )
+        }
+    }
+}
+
+data class FromSlackEvent(
+        @Json(name = "event_header") val eventHeader: KafkaEventHeader,
+        val event: Map<String, Any>
+)
 
 
 class SlackEventHandler(val kafkaProducer: KafkaProducer<String, String>, val fromSlackTopic: String, val leadershipFlag: LeadershipFlag) : RtmEventHandler {
@@ -16,8 +41,8 @@ class SlackEventHandler(val kafkaProducer: KafkaProducer<String, String>, val fr
         val blacklistedEventTypes = setOf("hello", "goodbye", "reconnect_url")
     }
 
-    private val moshi = Moshi.Builder().build()
-    private val mapAdapter = moshi.adapter(Map::class.java)
+    private val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).add(Date::class.java, Rfc3339DateJsonAdapter()).build()
+    private val eventAdapter = moshi.adapter(FromSlackEvent::class.java)
 
     override fun onEvent(event: RtmEvent) {
         if (blacklistedEventTypes.contains(event.type)) {
@@ -25,7 +50,11 @@ class SlackEventHandler(val kafkaProducer: KafkaProducer<String, String>, val fr
             return
         }
 
-        val eventJson = mapAdapter.toJson(event.payload)
+        val kafkaEvent = FromSlackEvent(
+                eventHeader = KafkaEventHeader.create(),
+                event = event.payload
+        )
+        val eventJson = eventAdapter.toJson(kafkaEvent)
 
         synchronized(leadershipFlag) {
             if (!leadershipFlag.isLeader) {
