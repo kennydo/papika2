@@ -5,8 +5,13 @@ dependencies {
     compile project(":papikacommon")
 }
 
-sourceSets.main.resources.srcDirs += '../config'
+processResources {
+    from("../config")
+    include "log4j.properties"
+}
 
 applicationDistribution.from("../config") {
     into "config"
+    include "log4j.properties"
+    include "toslack.reference.properties"
 }
