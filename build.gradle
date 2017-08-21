@@ -9,38 +9,72 @@ buildscript {
     }
 }
 
-allprojects {
-    group 'net.hanekawa.papika2'
-    version '1.0-SNAPSHOT'
+group 'net.hanekawa.papika2'
+version '1.0-SNAPSHOT'
 
-    apply plugin: 'kotlin'
+apply plugin: 'kotlin'
+apply plugin: 'java'
+apply plugin: 'distribution'
 
-    ext.moshi_version = '1.5.0'
+ext.moshi_version = '1.5.0'
 
-    repositories {
-        jcenter()
+repositories {
+    jcenter()
+}
+
+dependencies {
+    compile "com.squareup.okhttp3:okhttp:3.8.1"
+    compile "com.squareup.moshi:moshi:$moshi_version"
+    compile "com.squareup.moshi:moshi-adapters:$moshi_version"
+    compile "com.squareup.moshi:moshi-kotlin:$moshi_version"
+    compile "io.github.config4k:config4k:0.3.0"
+    compile "org.apache.kafka:kafka-clients:0.11.0.0"
+    compile "org.jetbrains.kotlin:kotlin-stdlib-jre8:$kotlin_version"
+    compile "org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"
+    compile "org.slf4j:slf4j-log4j12:1.7.25"
+    compile('org.apache.curator:curator-recipes:4.0.0') {
+        exclude group: 'org.apache.zookeeper', module: 'zookeeper'
     }
+    compile('org.apache.zookeeper:zookeeper:3.4.10')
+}
 
-    dependencies {
-        compile "com.squareup.okhttp3:okhttp:3.8.1"
-        compile "com.squareup.moshi:moshi:$moshi_version"
-        compile "com.squareup.moshi:moshi-adapters:$moshi_version"
-        compile "com.squareup.moshi:moshi-kotlin:$moshi_version"
-        compile "io.github.config4k:config4k:0.3.0"
-        compile "org.apache.kafka:kafka-clients:0.11.0.0"
-        compile "org.jetbrains.kotlin:kotlin-stdlib-jre8:$kotlin_version"
-        compile "org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"
-        compile "org.slf4j:slf4j-log4j12:1.7.25"
-    }
-
-    // Allow passing in config file property when running `run` tasks
-    tasks.withType(JavaExec) {
-        System.properties.each { key, value ->
-            if (key == "config.file") {
-                // Note that the file should be relative to the root of this git repo when running `run`
-                File configFile = file(value)
-                systemProperty key, configFile.absolutePath
-            }
+// Allow passing in config file property when running `run` tasks
+tasks.withType(JavaExec) {
+    System.properties.each { key, value ->
+        if (key == "config.file") {
+            // Note that the file should be relative to the root of this git repo when running `run`
+            File configFile = file(value)
+            systemProperty key, configFile.absolutePath
         }
     }
 }
+
+task createPapikaFromSlackStartScript(type: CreateStartScripts) {
+    outputDir = file("$buildDir/scripts")
+    mainClassName = 'net.hanekawa.papika.fromslack.PapikaFromSlackKt'
+    applicationName = 'papikaFromSlack'
+    classpath = files(jar.outputs.files + configurations.getByName("runtimeClasspath"))
+}
+
+task createPapikaTolackStartScript(type: CreateStartScripts) {
+    outputDir = file("$buildDir/scripts")
+    mainClassName = 'net.hanekawa.papika.toslack.PapikaToSlackKt'
+    applicationName = 'papikaToSlack'
+    classpath = files(jar.outputs.files + configurations.getByName("runtimeClasspath"))
+}
+
+def libChildSpec = project.copySpec {
+    into "lib"
+    from jar
+    from configurations.getByName("runtimeClasspath")
+}
+
+def binChildSpec = project.copySpec {
+    into "bin"
+    from createPapikaFromSlackStartScript
+    from createPapikaTolackStartScript
+    fileMode 0755
+    duplicatesStrategy DuplicatesStrategy.EXCLUDE
+}
+
+distributions.getByName("main").contents.with(libChildSpec, binChildSpec)

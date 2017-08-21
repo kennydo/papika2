@@ -1,6 +1,6 @@
 package net.hanekawa.papika.fromslack
 
-import net.hanekawa.papika.common.logging.getLogger
+import net.hanekawa.papika.common.getLogger
 import net.hanekawa.papika.common.slack.SlackClient
 import org.apache.kafka.clients.producer.KafkaProducer
 import java.util.*

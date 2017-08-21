@@ -2,7 +2,7 @@ package net.hanekawa.papika.common.slack
 
 import com.squareup.moshi.JsonDataException
 import com.squareup.moshi.Moshi
-import net.hanekawa.papika.common.logging.getLogger
+import net.hanekawa.papika.common.getLogger
 import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket

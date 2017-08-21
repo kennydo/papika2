@@ -1,7 +1,7 @@
 package net.hanekawa.papika.common.slack
 
 import com.squareup.moshi.Moshi
-import net.hanekawa.papika.common.logging.getLogger
+import net.hanekawa.papika.common.getLogger
 import net.hanekawa.papika.common.slack.errors.SlackConnectionError
 import okhttp3.FormBody
 import okhttp3.HttpUrl

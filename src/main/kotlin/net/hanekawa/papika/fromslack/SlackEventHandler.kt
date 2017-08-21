@@ -4,7 +4,7 @@ import com.squareup.moshi.Json
 import com.squareup.moshi.KotlinJsonAdapterFactory
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Rfc3339DateJsonAdapter
-import net.hanekawa.papika.common.logging.getLogger
+import net.hanekawa.papika.common.getLogger
 import net.hanekawa.papika.common.slack.RtmEvent
 import net.hanekawa.papika.common.slack.RtmEventHandler
 import org.apache.kafka.clients.producer.KafkaProducer

@@ -1,6 +1,6 @@
 package net.hanekawa.papika.fromslack
 
-import net.hanekawa.papika.common.logging.getLogger
+import net.hanekawa.papika.common.getLogger
 import org.apache.curator.framework.CuratorFramework
 import org.apache.curator.framework.CuratorFrameworkFactory
 import org.apache.curator.framework.recipes.leader.CancelLeadershipException
