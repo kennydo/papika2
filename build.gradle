@@ -77,4 +77,10 @@ def binChildSpec = project.copySpec {
     duplicatesStrategy DuplicatesStrategy.EXCLUDE
 }
 
+// Include default log4j properties
+processResources {
+    from "config"
+    include "log4j.properties"
+}
+
 distributions.getByName("main").contents.with(libChildSpec, binChildSpec)
