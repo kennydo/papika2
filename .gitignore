@@ -1,6 +1,8 @@
 fromslack.properties
 toslack.properties
 
+out/
+
 # Gradle files
 .gradle/
 gradle/

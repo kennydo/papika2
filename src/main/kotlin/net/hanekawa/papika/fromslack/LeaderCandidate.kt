@@ -10,11 +10,14 @@ import org.apache.curator.framework.state.ConnectionState
 import org.apache.curator.retry.ExponentialBackoffRetry
 import org.apache.zookeeper.client.ConnectStringParser
 
-class LeaderCandidate(val zookeeperConnect: String, val leadershipFlag: LeadershipFlag) {
+
+class LeaderCandidate(val zookeeperConnect: String) {
     companion object {
         val LOG = getLogger(this::class.java)
         val leaderPath = "/fromSlackLeader"
     }
+
+    var eligibleForLeadership = true
 
     private val zkConnectStringParser = ConnectStringParser(zookeeperConnect)
     private val retryPolicy = ExponentialBackoffRetry(1000, 5)
@@ -32,26 +35,25 @@ class LeaderCandidate(val zookeeperConnect: String, val leadershipFlag: Leadersh
                 LOG.info("ZK client state changed to {}", newState)
                 if (client.connectionStateErrorPolicy.isErrorState(newState)) {
                     LOG.info("Relinquishing leadership")
-                    synchronized(leadershipFlag) {
-                        leadershipFlag.isLeader = false
-                    }
                     throw CancelLeadershipException()
+                }
+
+                if (eligibleForLeadership) {
+                    leaderSelector.requeue()
                 }
             }
 
             override fun takeLeadership(client: CuratorFramework) {
-                LOG.info("Taking leadership!")
-                synchronized(leadershipFlag) {
-                    leadershipFlag.isLeader = true
+                if(!eligibleForLeadership){
+                    LOG.warn("Ineligible for leadership, but still tried to take leadership!")
+                    return
                 }
-                while (true) {
-                    Thread.sleep(10000)
+                LOG.info("Taking leadership!")
+                while (eligibleForLeadership) {
+                    Thread.sleep(5_000)
                 }
             }
         })
-
-        // We want the leader selector to try again if there is any error while being leader
-        leaderSelector.autoRequeue()
 
         return leaderSelector
     }
@@ -74,11 +76,24 @@ class LeaderCandidate(val zookeeperConnect: String, val leadershipFlag: Leadersh
             override fun run() {
                 LOG.info("Stopping candidacy for leadership")
                 try {
+                    curatorClient.close()
                     leaderSelector.close()
                 } catch (e: Exception) {
                     LOG.error("Unable to close leader selector", e)
                 }
             }
         })
+    }
+
+    fun abandonLeadership() {
+        LOG.info("Abandoning leadership")
+        synchronized(this) {
+            eligibleForLeadership = false
+            leaderSelector.interruptLeadership()
+        }
+    }
+
+    fun hasLeadership(): Boolean {
+        return leaderSelector.hasLeadership()
     }
 }

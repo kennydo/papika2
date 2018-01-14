@@ -11,8 +11,6 @@ class PapikaFromSlackBridge(val config: Config) {
         val LOG = getLogger(this::class.java)
     }
 
-    private val leadershipFlag = LeadershipFlag()
-
     fun run() {
         LOG.info("Starting the bridge from slack to kafka")
 
@@ -21,13 +19,14 @@ class PapikaFromSlackBridge(val config: Config) {
         val kafkaProducer = createKafkaProducer(config.kafkaBootstrapServers)
 
         LOG.info("Connecting to Zookeeper: {}", config.zookeeperConnect)
-        val leaderCandidate = LeaderCandidate(config.zookeeperConnect, leadershipFlag)
+        val leaderCandidate = LeaderCandidate(config.zookeeperConnect)
         leaderCandidate.run()
 
-        val eventHandler = SlackEventHandler(kafkaProducer, config.fromSlackTopic, leadershipFlag)
+        val eventHandler = SlackEventHandler(kafkaProducer, config.fromSlackTopic, leaderCandidate)
 
         LOG.info("Connecting to Slack")
         val slackClient = SlackClient(config.slackApiToken)
+
         slackClient.buildRtmSession(eventHandler).run()
     }
 

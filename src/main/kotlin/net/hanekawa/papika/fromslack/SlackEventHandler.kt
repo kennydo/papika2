@@ -7,6 +7,8 @@ import com.squareup.moshi.Rfc3339DateJsonAdapter
 import net.hanekawa.papika.common.getLogger
 import net.hanekawa.papika.common.slack.RtmEvent
 import net.hanekawa.papika.common.slack.RtmEventHandler
+import okhttp3.Response
+import okhttp3.WebSocket
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
 import java.net.InetAddress
@@ -33,7 +35,7 @@ data class FromSlackEvent(
 )
 
 
-class SlackEventHandler(val kafkaProducer: KafkaProducer<String, String>, val fromSlackTopic: String, val leadershipFlag: LeadershipFlag) : RtmEventHandler {
+class SlackEventHandler(val kafkaProducer: KafkaProducer<String, String>, val fromSlackTopic: String, val leaderCandidate: LeaderCandidate) : RtmEventHandler {
     companion object {
         val LOG = getLogger(this::class.java)
 
@@ -44,7 +46,7 @@ class SlackEventHandler(val kafkaProducer: KafkaProducer<String, String>, val fr
     private val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).add(Date::class.java, Rfc3339DateJsonAdapter()).build()
     private val eventAdapter = moshi.adapter(FromSlackEvent::class.java)
 
-    override fun onEvent(event: RtmEvent) {
+    override fun onEvent(webSocket: WebSocket, event: RtmEvent) {
         if (blacklistedEventTypes.contains(event.type)) {
             LOG.debug("Ignoring blacklisted event of type {}: {}", event.type, event.payload)
             return
@@ -56,8 +58,8 @@ class SlackEventHandler(val kafkaProducer: KafkaProducer<String, String>, val fr
         )
         val eventJson = eventAdapter.toJson(kafkaEvent)
 
-        synchronized(leadershipFlag) {
-            if (!leadershipFlag.isLeader) {
+        synchronized(leaderCandidate) {
+            if (!leaderCandidate.hasLeadership()) {
                 LOG.info("Not producing event to Kafka because not leader: {}", eventJson)
                 return
             }
@@ -69,4 +71,21 @@ class SlackEventHandler(val kafkaProducer: KafkaProducer<String, String>, val fr
         kafkaProducer.send(record)
     }
 
+    override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+        LOG.warn("Relinquishing leadership due to web socket failure", t)
+        internalClose()
+    }
+
+    override fun onClosing(webSocket: WebSocket?, code: Int, reason: String?) {
+        LOG.warn("Websocket closing code {}: {}", code, reason)
+        internalClose()
+    }
+
+    private fun internalClose() {
+        leaderCandidate.abandonLeadership()
+
+        // Block until all Kafka records are sent
+        kafkaProducer.close()
+
+    }
 }
