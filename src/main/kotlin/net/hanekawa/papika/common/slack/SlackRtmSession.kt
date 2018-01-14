@@ -71,6 +71,8 @@ class SlackRtmSession(val slackClient: SlackClient, val eventHandler: RtmEventHa
 
     fun run() {
         val rtmStartResponse = slackClient.getRtmStartResponse()
+        LOG.info("RTM Start response: {}", rtmStartResponse.self)
+
         slackClient.httpClient.newWebSocket(Request.Builder()
                 .url(rtmStartResponse.url)
                 .build(), JsonParsingListener(eventHandler))
