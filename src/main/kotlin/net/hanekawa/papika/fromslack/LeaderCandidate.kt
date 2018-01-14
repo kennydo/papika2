@@ -8,6 +8,7 @@ import org.apache.curator.framework.recipes.leader.LeaderSelector
 import org.apache.curator.framework.recipes.leader.LeaderSelectorListener
 import org.apache.curator.framework.state.ConnectionState
 import org.apache.curator.retry.ExponentialBackoffRetry
+import org.apache.zookeeper.client.ConnectStringParser
 
 class LeaderCandidate(val zookeeperConnect: String, val leadershipFlag: LeadershipFlag) {
     companion object {
@@ -15,6 +16,7 @@ class LeaderCandidate(val zookeeperConnect: String, val leadershipFlag: Leadersh
         val leaderPath = "/fromSlackLeader"
     }
 
+    private val zkConnectStringParser = ConnectStringParser(zookeeperConnect)
     private val retryPolicy = ExponentialBackoffRetry(1000, 5)
 
     private var curatorClient = createCuratorClient()
@@ -56,6 +58,14 @@ class LeaderCandidate(val zookeeperConnect: String, val leadershipFlag: Leadersh
 
     fun run() {
         curatorClient.start()
+
+        val chrootPath = zkConnectStringParser.chrootPath
+
+        // The existence check operates within the chroot, so we look for '/', not the configured chroot
+        if (chrootPath != null && curatorClient.checkExists().forPath("/") == null) {
+            LOG.error("Zookeeper chroot path does not exist, please ensure it exists: {}", chrootPath)
+            throw RuntimeException("Invalid chroot path")
+        }
 
         LOG.info("Announcing candidacy for leadership")
         leaderSelector.start()
