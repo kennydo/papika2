@@ -1,6 +1,7 @@
 package net.hanekawa.papika.common.slack
 
 import com.squareup.moshi.Moshi
+import com.timgroup.statsd.StatsDClient
 import net.hanekawa.papika.common.getLogger
 import net.hanekawa.papika.common.slack.errors.SlackConnectionError
 import okhttp3.FormBody
@@ -10,7 +11,7 @@ import okhttp3.Request
 import java.io.IOException
 
 
-class SlackClient(val accessToken: String) {
+class SlackClient(private val statsd: StatsDClient, private val accessToken: String) {
     companion object {
         val LOG = getLogger(this::class.java)
         val baseUrl = HttpUrl.parse("https://slack.com/api/")
@@ -49,7 +50,7 @@ class SlackClient(val accessToken: String) {
     }
 
     fun buildRtmSession(eventHandler: RtmEventHandler): SlackRtmSession {
-        return SlackRtmSession(this, eventHandler)
+        return SlackRtmSession(statsd, this, eventHandler)
     }
 
     fun callApi(apiMethod: String, payload: Map<String, String?>): Map<String, Any>? {

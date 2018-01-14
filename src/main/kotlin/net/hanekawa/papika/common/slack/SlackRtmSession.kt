@@ -2,6 +2,7 @@ package net.hanekawa.papika.common.slack
 
 import com.squareup.moshi.JsonDataException
 import com.squareup.moshi.Moshi
+import com.timgroup.statsd.StatsDClient
 import net.hanekawa.papika.common.getLogger
 import okhttp3.Request
 import okhttp3.Response
@@ -22,7 +23,7 @@ data class PingEvent(
 )
 
 
-class JsonParsingListener(val messageHandler: RtmEventHandler) : WebSocketListener() {
+class JsonParsingListener(private val statsd: StatsDClient, private val messageHandler: RtmEventHandler) : WebSocketListener() {
     companion object {
         val LOG = getLogger(this::class.java)
     }
@@ -35,12 +36,15 @@ class JsonParsingListener(val messageHandler: RtmEventHandler) : WebSocketListen
 
     override fun onOpen(webSocket: WebSocket, response: Response) {
         SlackRtmSession.LOG.debug("Opening websocket got response: {}", response)
+        statsd.increment("websocket.num_open")
 
-        healthChecker = WebSocketHealthCheckingThread(webSocket)
+        healthChecker = WebSocketHealthCheckingThread(statsd, webSocket)
         healthChecker!!.start()
     }
 
     override fun onMessage(webSocket: WebSocket, text: String?) {
+        statsd.increment("websocket.num_message")
+
         if (text == null) {
             SlackRtmSession.LOG.warn("Got null message: {}", text)
             return
@@ -71,6 +75,7 @@ class JsonParsingListener(val messageHandler: RtmEventHandler) : WebSocketListen
     }
 
     override fun onClosing(webSocket: WebSocket, code: Int, reason: String?) {
+        statsd.increment("websocket.num_closing", "code:$code")
         SlackRtmSession.LOG.info("Closing with code {}: {}", code, reason)
         healthChecker!!.shouldRun = false
 
@@ -81,6 +86,7 @@ class JsonParsingListener(val messageHandler: RtmEventHandler) : WebSocketListen
     }
 
     override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+        statsd.increment("websocket.num_failure")
         SlackRtmSession.LOG.error("Unexpected failure: {}", response, t)
         healthChecker!!.shouldRun = false
 
@@ -89,7 +95,12 @@ class JsonParsingListener(val messageHandler: RtmEventHandler) : WebSocketListen
 }
 
 
-class WebSocketHealthCheckingThread(private val webSocket: WebSocket, private val pingIntervalMs: Long = 5_000, private val unansweredPingsThreshold: Int = 5) : Thread() {
+class WebSocketHealthCheckingThread(
+        private val statsd: StatsDClient,
+        private val webSocket: WebSocket,
+        private val pingIntervalMs: Long = 5_000,
+        private val unansweredPingsThreshold: Int = 5
+) : Thread() {
     companion object {
         val LOG = getLogger(this::class.java)
     }
@@ -139,6 +150,8 @@ class WebSocketHealthCheckingThread(private val webSocket: WebSocket, private va
                 }
             }
 
+            statsd.gauge("websocket.healthcheck.num_unanswered_pings", unansweredPingsCounter.toLong())
+
             when {
                 unansweredPingsCounter >= unansweredPingsThreshold -> {
                     LOG.info("Reached maximum threshold of unanswered pings ({}), declaring unhealthy", unansweredPingsThreshold)
@@ -168,6 +181,7 @@ class WebSocketHealthCheckingThread(private val webSocket: WebSocket, private va
 
         val currentTimeMs = System.currentTimeMillis()
         val timeSincePingMs = currentTimeMs - pingTimeMs
+        statsd.recordExecutionTime("websocket.healthcheck.ping_pong_time_diff", timeSincePingMs)
         LOG.debug("Received pong {} ms after ping (ping={}, pong={})", timeSincePingMs, pingTimeMs, mostRecentPongReceivedAt)
     }
 
@@ -180,7 +194,7 @@ class WebSocketHealthCheckingThread(private val webSocket: WebSocket, private va
 }
 
 
-class SlackRtmSession(val slackClient: SlackClient, val eventHandler: RtmEventHandler) {
+class SlackRtmSession(private val statsd: StatsDClient, private val slackClient: SlackClient, private val eventHandler: RtmEventHandler) {
     companion object {
         val LOG = getLogger(this::class.java)
     }
@@ -191,7 +205,7 @@ class SlackRtmSession(val slackClient: SlackClient, val eventHandler: RtmEventHa
 
         slackClient.httpClient.newWebSocket(Request.Builder()
                 .url(rtmStartResponse.url)
-                .build(), JsonParsingListener(eventHandler))
+                .build(), JsonParsingListener(statsd, eventHandler))
 
         // Tell the executor to shutdown (otherwise, we're waiting for it to timeout)
         slackClient.httpClient.dispatcher().executorService().shutdown()

@@ -1,5 +1,6 @@
 package net.hanekawa.papika.fromslack
 
+import com.timgroup.statsd.NonBlockingStatsDClient
 import net.hanekawa.papika.common.getLogger
 import net.hanekawa.papika.common.slack.SlackClient
 import org.apache.kafka.clients.producer.KafkaProducer
@@ -13,19 +14,20 @@ class PapikaFromSlackBridge(val config: Config) {
 
     fun run() {
         LOG.info("Starting the bridge from slack to kafka")
+        val statsd = NonBlockingStatsDClient("papika.fromslack", config.statsDHost, config.statsDPort)
 
         LOG.info("Connecting to Kafka: {}", config.kafkaBootstrapServers)
         LOG.info("Sending Slack events to topic: {}", config.fromSlackTopic)
         val kafkaProducer = createKafkaProducer(config.kafkaBootstrapServers)
 
         LOG.info("Connecting to Zookeeper: {}", config.zookeeperConnect)
-        val leaderCandidate = LeaderCandidate(config.zookeeperConnect)
+        val leaderCandidate = LeaderCandidate(statsd, config.zookeeperConnect)
         leaderCandidate.run()
 
-        val eventHandler = SlackEventHandler(kafkaProducer, config.fromSlackTopic, leaderCandidate)
+        val eventHandler = SlackEventHandler(statsd, kafkaProducer, config.fromSlackTopic, leaderCandidate)
 
         LOG.info("Connecting to Slack")
-        val slackClient = SlackClient(config.slackApiToken)
+        val slackClient = SlackClient(statsd, config.slackApiToken)
 
         slackClient.buildRtmSession(eventHandler).run()
     }

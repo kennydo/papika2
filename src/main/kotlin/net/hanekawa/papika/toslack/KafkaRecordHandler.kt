@@ -2,6 +2,7 @@ package net.hanekawa.papika.toslack
 
 import com.squareup.moshi.Json
 import com.squareup.moshi.Moshi
+import com.timgroup.statsd.StatsDClient
 import net.hanekawa.papika.common.getLogger
 import net.hanekawa.papika.common.slack.SlackClient
 import org.apache.kafka.clients.consumer.ConsumerRecord
@@ -26,7 +27,7 @@ data class KafkaPayload(
 )
 
 
-class KafkaRecordHandler(val slackClient: SlackClient) {
+class KafkaRecordHandler(private val statsd: StatsDClient, private val slackClient: SlackClient) {
     companion object {
         val LOG = getLogger(this::class.java)
     }
@@ -59,6 +60,7 @@ class KafkaRecordHandler(val slackClient: SlackClient) {
 
         if (!isValidMessageForSlack(kafkaPayload)) {
             LOG.info("Not sending record because it does not meet Slack's API")
+            statsd.increment("kafka_consumer.invalid_record")
             return
         }
 
@@ -78,6 +80,7 @@ class KafkaRecordHandler(val slackClient: SlackClient) {
         payload["username"] = kafkaPayload.username
 
         LOG.info("Posting message to Slack: {}", payload)
+        statsd.increment("kafka_consumer.num_messages_posted_to_slack")
         slackClient.callApi("chat.postMessage", payload)
     }
 }

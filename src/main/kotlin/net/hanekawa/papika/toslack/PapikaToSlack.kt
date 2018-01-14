@@ -1,5 +1,6 @@
 package net.hanekawa.papika.toslack
 
+import com.timgroup.statsd.NonBlockingStatsDClient
 import net.hanekawa.papika.common.getLogger
 import net.hanekawa.papika.common.slack.SlackClient
 import org.apache.kafka.clients.consumer.KafkaConsumer
@@ -13,8 +14,9 @@ class PapikaToSlackBridge(val config: Config) {
 
     fun run() {
         LOG.info("Starting the bridge from Kafka to Slack")
+        val statsd = NonBlockingStatsDClient("papika.toslack", config.statsDHost, config.statsDPort)
 
-        val slackClient = SlackClient(config.slackApiToken)
+        val slackClient = SlackClient(statsd, config.slackApiToken)
 
         LOG.info("Connecting to Kafka servers {} with consumer group {}", config.kafkaBootstrapServers, config.consumerGroup)
         val kafkaConsumer = createKafkaConsumer(config.kafkaBootstrapServers, config.consumerGroup)
@@ -22,7 +24,7 @@ class PapikaToSlackBridge(val config: Config) {
         LOG.info("Subscribing to topic: {}", config.toSlackTopic)
         kafkaConsumer.subscribe(arrayListOf(config.toSlackTopic))
 
-        val kafkaHandler = KafkaRecordHandler(slackClient)
+        val kafkaHandler = KafkaRecordHandler(statsd, slackClient)
 
         while (true) {
             val records = kafkaConsumer.poll(500)

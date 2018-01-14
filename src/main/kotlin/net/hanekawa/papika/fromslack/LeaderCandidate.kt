@@ -1,5 +1,6 @@
 package net.hanekawa.papika.fromslack
 
+import com.timgroup.statsd.StatsDClient
 import net.hanekawa.papika.common.getLogger
 import org.apache.curator.framework.CuratorFramework
 import org.apache.curator.framework.CuratorFrameworkFactory
@@ -11,7 +12,7 @@ import org.apache.curator.retry.ExponentialBackoffRetry
 import org.apache.zookeeper.client.ConnectStringParser
 
 
-class LeaderCandidate(val zookeeperConnect: String) {
+class LeaderCandidate(private val statsd: StatsDClient, private val zookeeperConnect: String) {
     companion object {
         val LOG = getLogger(this::class.java)
         val leaderPath = "/fromSlackLeader"
@@ -32,13 +33,18 @@ class LeaderCandidate(val zookeeperConnect: String) {
     private fun createLeaderSelector(curatorClient: CuratorFramework): LeaderSelector {
         val leaderSelector = LeaderSelector(curatorClient, leaderPath, object : LeaderSelectorListener {
             override fun stateChanged(client: CuratorFramework, newState: ConnectionState) {
+                val statsdTags = arrayOf("new_state:${newState.name}")
                 LOG.info("ZK client state changed to {}", newState)
+                statsd.increment("leadership.num_state_change", *statsdTags)
+
                 if (client.connectionStateErrorPolicy.isErrorState(newState)) {
                     LOG.info("Relinquishing leadership")
+                    statsd.increment("leadership.num_cancel_leadership", *statsdTags)
                     throw CancelLeadershipException()
                 }
 
                 if (eligibleForLeadership) {
+                    statsd.increment("leadership.num_requeue", *statsdTags)
                     leaderSelector.requeue()
                 }
             }
@@ -50,6 +56,7 @@ class LeaderCandidate(val zookeeperConnect: String) {
                 }
                 LOG.info("Taking leadership!")
                 while (eligibleForLeadership) {
+                    statsd.increment("leadership.num_polling_as_leader")
                     Thread.sleep(5_000)
                 }
             }
