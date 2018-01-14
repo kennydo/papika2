@@ -29,6 +29,11 @@ class JsonParsingListener(val messageHandler: RtmEventHandler) : WebSocketListen
     }
 
     override fun onMessage(webSocket: WebSocket?, text: String?) {
+        if (text == null) {
+            SlackRtmSession.LOG.warn("Got null message: {}", text)
+            return
+        }
+
         val parsedMessage = try {
             mapAdapter.fromJson(text)
         } catch (e: JsonDataException) {

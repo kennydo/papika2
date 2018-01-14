@@ -24,7 +24,7 @@ class SlackClient(val accessToken: String) {
         val url = baseUrl
                 ?.newBuilder("rtm.start")
                 ?.addQueryParameter("token", accessToken)
-                ?.build()
+                ?.build()!!
 
         val request = Request.Builder()
                 .url(url)
@@ -42,12 +42,10 @@ class SlackClient(val accessToken: String) {
             throw SlackConnectionError("Received non-200 response from Slack API")
         }
 
-        val responseBody = response.body()?.source()
+        val responseBody = response.body()!!.source()
 
-        val rtmStartResponse = moshi.adapter(RtmStartResponse::class.java).fromJson(responseBody)
+        return moshi.adapter(RtmStartResponse::class.java).fromJson(responseBody)
                 ?: throw SlackConnectionError("Could not parse: " + responseBody)
-
-        return rtmStartResponse
     }
 
     fun buildRtmSession(eventHandler: RtmEventHandler): SlackRtmSession {
@@ -58,12 +56,12 @@ class SlackClient(val accessToken: String) {
         val apiUrl = baseUrl
                 ?.newBuilder(apiMethod)
                 ?.addQueryParameter("token", accessToken)
-                ?.build()
+                ?.build()!!
 
         val formBodyBuilder = FormBody.Builder()
         payload.forEach { entry ->
             if (entry.value != null) {
-                formBodyBuilder.add(entry.key, entry.value)
+                formBodyBuilder.add(entry.key, entry.value!!)
             }
         }
 
@@ -81,10 +79,9 @@ class SlackClient(val accessToken: String) {
             null
         } ?: return null
 
-
         return try {
             @Suppress("UNCHECKED_CAST")
-            mapAdapter.fromJson(response.body()?.source()) as? Map<String, Any>
+            mapAdapter.fromJson(response.body()?.source()!!) as? Map<String, Any>
         } catch (e: IOException) {
             LOG.error("Unable to parse response from Slack: {}", e)
             null
