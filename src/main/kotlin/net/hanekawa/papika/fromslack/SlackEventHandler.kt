@@ -61,12 +61,12 @@ class SlackEventHandler(val kafkaProducer: KafkaProducer<String, String>, val fr
                 LOG.info("Not producing event to Kafka because not leader: {}", eventJson)
                 return
             }
-
-            val record = ProducerRecord<String, String>(fromSlackTopic, eventJson)
-
-            LOG.info("Producing event to Kafka: {}", eventJson)
-            kafkaProducer.send(record)
         }
+
+        val record = ProducerRecord<String, String>(fromSlackTopic, eventJson)
+
+        LOG.info("Producing event to Kafka: {}", eventJson)
+        kafkaProducer.send(record)
     }
 
 }
