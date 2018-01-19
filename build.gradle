@@ -10,7 +10,7 @@ buildscript {
 }
 
 group 'net.hanekawa.papika'
-version '2.0.4-SNAPSHOT'
+version '2.0.5-SNAPSHOT'
 
 apply plugin: 'kotlin'
 apply plugin: 'java'
