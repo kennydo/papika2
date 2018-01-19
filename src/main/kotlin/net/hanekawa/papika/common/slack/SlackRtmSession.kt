@@ -35,7 +35,7 @@ class JsonParsingListener(private val statsd: StatsDClient, private val messageH
     private var healthChecker: WebSocketHealthCheckingThread? = null
 
     override fun onOpen(webSocket: WebSocket, response: Response) {
-        SlackRtmSession.LOG.debug("Opening websocket got response: {}", response)
+        LOG.debug("Opening websocket got response: {}", response)
         statsd.increment("websocket.num_open")
 
         healthChecker = WebSocketHealthCheckingThread(statsd, webSocket)
@@ -53,13 +53,18 @@ class JsonParsingListener(private val statsd: StatsDClient, private val messageH
         val parsedMessage = try {
             mapAdapter.fromJson(text)
         } catch (e: JsonDataException) {
-            SlackRtmSession.LOG.error("Unable to parse: {}", text)
+            LOG.error("Unable to parse: {}", text)
             null
         } ?: return
 
-        SlackRtmSession.LOG.debug("Got event: {}", mapAdapter.toJson(parsedMessage))
+        LOG.debug("Got event: {}", text)
         @Suppress("UNCHECKED_CAST")
         val castedEvent = parsedMessage as? Map<String, Any> ?: return
+
+        if (!castedEvent.containsKey("type")) {
+            LOG.warn("Received event without type: {}", text)
+            return
+        }
 
         val event = RtmEvent(
                 type = castedEvent["type"] as String,
@@ -76,7 +81,7 @@ class JsonParsingListener(private val statsd: StatsDClient, private val messageH
 
     override fun onClosing(webSocket: WebSocket, code: Int, reason: String?) {
         statsd.increment("websocket.num_closing", "code:$code")
-        SlackRtmSession.LOG.info("Closing with code {}: {}", code, reason)
+        LOG.info("Closing with code {}: {}", code, reason)
         healthChecker!!.shouldRun = false
 
         messageHandler.onClosing(webSocket, code, reason)
@@ -87,7 +92,7 @@ class JsonParsingListener(private val statsd: StatsDClient, private val messageH
 
     override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
         statsd.increment("websocket.num_failure")
-        SlackRtmSession.LOG.error("Unexpected failure: {}", response, t)
+        LOG.error("Unexpected failure: {}", response, t)
         healthChecker!!.shouldRun = false
 
         messageHandler.onFailure(webSocket, t, response)
